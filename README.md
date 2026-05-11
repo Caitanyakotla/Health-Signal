@@ -1,5 +1,5 @@
 # HealthSignal Platform
-### MediTech-style ML infrastructure
+### Nordic HealthTech ML Infrastructure
 
 Infrastructure:
 **AWS · Kubernetes · ElasticSearch · CI/CD · Prometheus · Grafana · Docker**
