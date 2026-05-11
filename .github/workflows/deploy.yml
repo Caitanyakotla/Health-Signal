@@ -1,0 +1,240 @@
+# =========================================================
+# GitHub Actions CI/CD Pipeline
+# Project: SickLeave Predictor
+#
+# This pipeline will:
+# 1. Train and test the ML model
+# 2. Build Docker image
+# 3. Push image to AWS ECR
+# 4. Deploy application to AWS EKS
+#
+# You can run this later after:
+# - Creating AWS ECR repository
+# - Creating EKS cluster
+# - Adding GitHub secrets
+# =========================================================
+
+# Workflow name shown in GitHub Actions
+name: SickLeave Predictor — Build & Deploy
+
+# ---------------------------------------------------------
+# Trigger conditions
+# ---------------------------------------------------------
+on:
+
+  # Run pipeline when code is pushed to main branch
+  push:
+    branches: [main]
+
+  # Run pipeline for pull requests to main branch
+  pull_request:
+    branches: [main]
+
+# ---------------------------------------------------------
+# Global environment variables
+# Available in all jobs
+# ---------------------------------------------------------
+env:
+
+  # AWS Stockholm region
+  AWS_REGION: eu-north-1
+
+  # AWS ECR repository name
+  ECR_REPOSITORY: healthsignal-predictor
+
+  # AWS EKS cluster name
+  EKS_CLUSTER: healthsignal-cluster
+
+  # Use Git commit SHA as Docker image tag
+  IMAGE_TAG: ${{ github.sha }}
+
+# =========================================================
+# JOBS
+# =========================================================
+jobs:
+
+  # =======================================================
+  # JOB 1: TRAIN & TEST MACHINE LEARNING MODEL
+  # =======================================================
+  ml-test:
+
+    # Job name displayed in GitHub Actions UI
+    name: Train & Validate ML Model
+
+    # GitHub-hosted Ubuntu runner
+    runs-on: ubuntu-latest
+
+    # -----------------------------------------------------
+    # Steps inside ML job
+    # -----------------------------------------------------
+    steps:
+
+    # Download repository source code
+    - uses: actions/checkout@v4
+
+    # Install Python 3.12
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+
+    # Install required Python packages
+    - name: Install dependencies
+      run: pip install -r requirements.txt
+
+    # Train ML model
+    # Expected output:
+    # app/model.pkl
+    - name: Train model
+      run: python3 ml/train_model.py
+
+    # Run automated ML tests using pytest
+    - name: Run model tests
+      run: python3 -m pytest ml/tests/ -v
+
+    # Upload trained model as GitHub artifact
+    # Used later during Docker build
+    - name: Upload model artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: trained-model
+        path: app/model.pkl
+
+  # =======================================================
+  # JOB 2: BUILD & PUSH DOCKER IMAGE
+  # =======================================================
+  build:
+
+    # Job display name
+    name: Build Docker Image
+
+    # Ubuntu runner
+    runs-on: ubuntu-latest
+
+    # Run only after ml-test succeeds
+    needs: ml-test
+
+    # Run only on main branch
+    if: github.ref == 'refs/heads/main'
+
+    # Export image URI for deployment job
+    outputs:
+      image-uri: ${{ steps.build-push.outputs.image-uri }}
+
+    # -----------------------------------------------------
+    # Steps inside build job
+    # -----------------------------------------------------
+    steps:
+
+    # Download repository code
+    - uses: actions/checkout@v4
+
+    # Download trained ML model artifact
+    - name: Download trained model
+      uses: actions/download-artifact@v4
+      with:
+        name: trained-model
+        path: app/
+
+    # Configure AWS credentials
+    # Required GitHub Secrets:
+    # AWS_ACCESS_KEY_ID
+    # AWS_SECRET_ACCESS_KEY
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    # Login Docker to AWS ECR
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    # Build Docker image and push to ECR
+    - name: Build, tag and push image
+      id: build-push
+
+      # Local environment variable
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+
+      run: |
+
+        # Full Docker image path
+        IMAGE_URI=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+        # Build Docker image
+        docker build -t $IMAGE_URI .
+
+        # Push Docker image to AWS ECR
+        docker push $IMAGE_URI
+
+        # Save image URI for deploy job
+        echo "image-uri=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+        # Print image URI
+        echo "Built and pushed: $IMAGE_URI"
+
+  # =======================================================
+  # JOB 3: DEPLOY APPLICATION TO AWS EKS
+  # =======================================================
+  deploy:
+
+    # Job name
+    name: Deploy to EKS
+
+    # Ubuntu runner
+    runs-on: ubuntu-latest
+
+    # Run after build job succeeds
+    needs: build
+
+    # Deploy only from main branch
+    if: github.ref == 'refs/heads/main'
+
+    # -----------------------------------------------------
+    # Steps inside deploy job
+    # -----------------------------------------------------
+    steps:
+
+    # Download repository code
+    - uses: actions/checkout@v4
+
+    # Configure AWS access
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+
+    # Connect kubectl to AWS EKS cluster
+    - name: Update kubeconfig
+      run: |
+        aws eks update-kubeconfig \
+          --name $EKS_CLUSTER \
+          --region $AWS_REGION
+
+    # Update Kubernetes deployment with new Docker image
+    - name: Deploy to Kubernetes
+      run: |
+
+        # Update deployment image
+        kubectl set image deployment/healthsignal-predictor \
+          predictor=${{ needs.build.outputs.image-uri }} \
+          -n sickleave
+
+        # Wait until rollout completes successfully
+        kubectl rollout status deployment/healthsignal-predictor \
+          -n sickleave --timeout=120s
+
+    # Verify Kubernetes deployment
+    - name: Verify deployment
+      run: |
+
+        # Show running pods
+        kubectl get pods -n sickleave
+
+        # Show Kubernetes services
+        kubectl get svc -n sickleave

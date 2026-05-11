@@ -1,0 +1,63 @@
+{
+  "title": "HealthSignal",
+  "uid": "sickleave-v1",
+  "version": 1,
+  "schemaVersion": 38,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Predictions",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+      "targets": [{
+        "expr": "sum(sickleave_predictions_total)",
+        "legendFormat": "Total"
+      }]
+    },
+    {
+      "id": 2,
+      "title": "HIGH Risk Predictions",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+      "targets": [{
+        "expr": "sum(sickleave_predictions_total{risk_level=\"HIGH\"})",
+        "legendFormat": "High Risk"
+      }],
+      "options": {"colorMode": "background"},
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "red"}}}
+    },
+    {
+      "id": 3,
+      "title": "LOW Risk Predictions",
+      "type": "stat",
+      "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+      "targets": [{
+        "expr": "sum(sickleave_predictions_total{risk_level=\"LOW\"})",
+        "legendFormat": "Low Risk"
+      }],
+      "fieldConfig": {"defaults": {"color": {"mode": "fixed", "fixedColor": "green"}}}
+    },
+    {
+      "id": 4,
+      "title": "Prediction Rate (per minute)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+      "targets": [{
+        "expr": "rate(sickleave_predictions_total[1m]) * 60",
+        "legendFormat": "{{risk_level}}"
+      }]
+    },
+    {
+      "id": 5,
+      "title": "API Latency (p95)",
+      "type": "timeseries",
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 4},
+      "targets": [{
+        "expr": "histogram_quantile(0.95, rate(sickleave_prediction_latency_seconds_bucket[5m]))",
+        "legendFormat": "p95 latency"
+      }]
+    }
+  ],
+  "refresh": "10s",
+  "time": {"from": "now-30m", "to": "now"}
+}

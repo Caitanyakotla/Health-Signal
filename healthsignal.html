@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HealthSignal — Workplace Health Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #050810;
+  --surface: rgba(255,255,255,0.03);
+  --surface-hover: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.07);
+  --border-bright: rgba(255,255,255,0.15);
+  --text: #f0f4ff;
+  --text-muted: rgba(240,244,255,0.45);
+  --text-dim: rgba(240,244,255,0.25);
+  --high: #ff4d6d;
+  --high-glow: rgba(255,77,109,0.2);
+  --high-dim: rgba(255,77,109,0.08);
+  --low: #00e5a0;
+  --low-glow: rgba(0,229,160,0.2);
+  --low-dim: rgba(0,229,160,0.06);
+  --accent: #6c8cff;
+  --accent-glow: rgba(108,140,255,0.15);
+  --gold: #f5c842;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Animated background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 10%, rgba(108,140,255,0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 40% 30% at 80% 80%, rgba(255,77,109,0.05) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 40% at 60% 40%, rgba(0,229,160,0.04) 0%, transparent 55%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Grid overlay */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrapper { position: relative; z-index: 1; }
+
+/* ── HEADER ── */
+header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 40px;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(5,8,16,0.8);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--accent), var(--low));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.logo-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 20px;
+  letter-spacing: -0.5px;
+}
+
+.logo-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: 'DM Mono', monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.api-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 6px 14px;
+  border-radius: 20px;
+}
+
+.pulse {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #888;
+  position: relative;
+}
+.pulse.online { background: var(--low); }
+.pulse.online::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: var(--low-glow);
+  animation: pulse-ring 2s ease infinite;
+}
+@keyframes pulse-ring {
+  0% { transform: scale(1); opacity: 1; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* ── MAIN ── */
+main { padding: 40px; max-width: 1400px; margin: 0 auto; }
+
+/* ── HERO ── */
+.hero { margin-bottom: 48px; }
+.hero-eyebrow {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.hero-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 42px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+  margin-bottom: 12px;
+}
+.hero-title em {
+  font-style: italic;
+  color: var(--accent);
+}
+.hero-sub {
+  font-size: 15px;
+  color: var(--text-muted);
+  max-width: 520px;
+  line-height: 1.6;
+}
+
+/* ── STATS GRID ── */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, background 0.3s;
+}
+.stat:hover {
+  border-color: var(--border-bright);
+  background: var(--surface-hover);
+}
+.stat::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+}
+
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 10px;
+}
+.stat-value {
+  font-family: 'DM Serif Display', serif;
+  font-size: 40px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.stat-value.danger { color: var(--high); }
+.stat-value.success { color: var(--low); }
+.stat-value.accent { color: var(--accent); }
+.stat-delta {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── CHART ── */
+.chart-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  margin-bottom: 32px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-family: 'DM Mono', monospace;
+}
+.chart-wrap { position: relative; height: 160px; }
+
+/* ── CONTROLS ── */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.filter-btn {
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  padding: 8px 18px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.filter-btn:hover { border-color: var(--border-bright); color: var(--text); }
+.filter-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+.filter-btn.active-high { background: var(--high); border-color: var(--high); color: white; }
+.filter-btn.active-low { background: var(--low); border-color: var(--low); color: var(--bg); }
+
+.refresh-btn {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace;
+  font-size: 12px;
+  padding: 8px 20px;
+  border-radius: 20px;
+  border: 1px solid var(--accent);
+  background: var(--accent-glow);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s;
+  letter-spacing: 0.5px;
+}
+.refresh-btn:hover { background: var(--accent); color: white; }
+
+/* ── TABLE ── */
+.table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+table { width: 100%; border-collapse: collapse; }
+
+thead tr {
+  background: rgba(255,255,255,0.02);
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  padding: 14px 20px;
+  text-align: left;
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  font-family: 'DM Mono', monospace;
+  white-space: nowrap;
+}
+
+tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s;
+  animation: fadeIn 0.4s ease forwards;
+  opacity: 0;
+}
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface-hover); }
+tbody tr.high { background: var(--high-dim); }
+tbody tr.high:hover { background: rgba(255,77,109,0.12); }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+td { padding: 14px 20px; vertical-align: middle; }
+
+.avatar {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600;
+  flex-shrink: 0;
+  font-family: 'DM Mono', monospace;
+}
+.avatar.h { background: var(--high-dim); color: var(--high); border: 1px solid rgba(255,77,109,0.25); }
+.avatar.l { background: var(--low-dim); color: var(--low); border: 1px solid rgba(0,229,160,0.2); }
+
+.name-wrap { display: flex; align-items: center; gap: 12px; }
+.name { font-weight: 500; font-size: 14px; }
+.dept { font-size: 11px; color: var(--text-dim); font-family: 'DM Mono', monospace; margin-top: 2px; }
+
+.num { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--text-muted); }
+
+.prob-wrap { display: flex; align-items: center; gap: 10px; }
+.prob-track { width: 56px; height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+.prob-fill { height: 100%; border-radius: 2px; transition: width 1s ease; }
+.prob-fill.h { background: linear-gradient(90deg, #ff4d6d, #ff8fa3); }
+.prob-fill.l { background: linear-gradient(90deg, #00e5a0, #6fffd4); }
+.prob-num { font-family: 'DM Serif Display', serif; font-size: 16px; min-width: 40px; }
+.prob-num.h { color: var(--high); }
+.prob-num.l { color: var(--low); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 10px; font-weight: 600;
+  padding: 4px 12px; border-radius: 20px;
+  letter-spacing: 1px; text-transform: uppercase;
+  font-family: 'DM Mono', monospace;
+}
+.badge.HIGH {
+  background: var(--high-dim);
+  color: var(--high);
+  border: 1px solid rgba(255,77,109,0.3);
+}
+.badge.HIGH::before { content: '●'; font-size: 6px; }
+.badge.LOW {
+  background: var(--low-dim);
+  color: var(--low);
+  border: 1px solid rgba(0,229,160,0.2);
+}
+.badge.LOW::before { content: '●'; font-size: 6px; }
+
+.rec { font-size: 12px; color: var(--text-muted); max-width: 260px; line-height: 1.4; }
+
+/* ── ERROR ── */
+.error {
+  display: none;
+  background: rgba(255,77,109,0.07);
+  border: 1px solid rgba(255,77,109,0.2);
+  border-radius: 12px;
+  padding: 20px 24px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  color: var(--high);
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── FOOTER ── */
+.footer {
+  margin-top: 32px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+
+.model-tag {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.model-tag span {
+  background: var(--accent-glow);
+  border: 1px solid rgba(108,140,255,0.2);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 10px;
+}
+
+/* Loading */
+.loading-row td {
+  text-align: center;
+  padding: 48px;
+  color: var(--text-dim);
+  font-family: 'DM Mono', monospace;
+  font-size: 13px;
+}
+.spinner {
+  display: inline-block;
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.1);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚕</div>
+    <div>
+      <div class="logo-text">HealthSignal</div>
+      <div class="logo-sub">Workplace Health Intelligence</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="api-pill">
+      <div class="pulse" id="statusDot"></div>
+      <span id="statusText">Connecting...</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="hero">
+    <div class="hero-eyebrow">AI-Powered Risk Detection</div>
+    <h1 class="hero-title">Early signals of<br><em>long-term sick leave</em></h1>
+    <p class="hero-sub">GradientBoosting ML model predicts employee sick leave risk on day one of absence — enabling proactive intervention before long-term absence occurs.</p>
+  </div>
+
+  <div id="errorBanner" class="error">
+    ⚠ Cannot reach API. Start it with: uvicorn app.main:app --port 8001
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Employees analysed</div>
+      <div class="stat-value accent" id="sTotal">—</div>
+      <div class="stat-delta">via /predict/batch</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">High risk flagged</div>
+      <div class="stat-value danger" id="sHigh">—</div>
+      <div class="stat-delta">requires intervention</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Low risk</div>
+      <div class="stat-value success" id="sLow">—</div>
+      <div class="stat-delta">no action needed</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Avg risk score</div>
+      <div class="stat-value" id="sAvg">—</div>
+      <div class="stat-delta">across all employees</div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="card-header">
+      <div class="card-title">Risk probability distribution</div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="chart" role="img" aria-label="Employee risk probability bar chart"></canvas>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="filter-btn active" id="btnAll" onclick="setFilter('ALL')">All employees</button>
+    <button class="filter-btn" id="btnHigh" onclick="setFilter('HIGH')">High risk</button>
+    <button class="filter-btn" id="btnLow" onclick="setFilter('LOW')">Low risk</button>
+    <button class="refresh-btn" onclick="loadAll()">↺ Refresh predictions</button>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Employee</th>
+          <th>Age</th>
+          <th>Absences / yr</th>
+          <th>Stress</th>
+          <th>Prev LT</th>
+          <th>Risk score</th>
+          <th>Level</th>
+          <th>AI recommendation</th>
+        </tr>
+      </thead>
+      <tbody id="tbody">
+        <tr class="loading-row"><td colspan="8"><span class="spinner"></span>Fetching predictions from Kubernetes...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="footer">
+    <div class="model-tag">
+      <span>GradientBoosting</span>
+      <span>scikit-learn 1.8.0</span>
+      <span>FastAPI</span>
+      <span>Kubernetes</span>
+    </div>
+    <div id="footerApi">API: detecting...</div>
+  </div>
+</main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+// ── CONFIG ────────────────────────────────────────────────────────────────
+// Change this to your minikube URL
+const API = localStorage.getItem('hs_api') || 'http://127.0.0.1:33517';
+
+const EMPLOYEES = [
+  {name:"Erik Lindqvist",   dept:"Engineering", age:52, tenure_years:3,  absences_last_year:8,  absences_last_3months:4, department_stress_score:9.2, previous_long_term:1, part_time:0, manager_support_score:3.1},
+  {name:"Anna Svensson",    dept:"HR",          age:29, tenure_years:7,  absences_last_year:1,  absences_last_3months:0, department_stress_score:3.5, previous_long_term:0, part_time:0, manager_support_score:9.0},
+  {name:"Marcus Johansson", dept:"Sales",       age:45, tenure_years:12, absences_last_year:6,  absences_last_3months:3, department_stress_score:7.8, previous_long_term:1, part_time:0, manager_support_score:4.2},
+  {name:"Sara Nilsson",     dept:"Finance",     age:34, tenure_years:6,  absences_last_year:2,  absences_last_3months:1, department_stress_score:5.1, previous_long_term:0, part_time:1, manager_support_score:7.5},
+  {name:"Björn Karlsson",   dept:"Operations",  age:58, tenure_years:25, absences_last_year:4,  absences_last_3months:2, department_stress_score:6.0, previous_long_term:1, part_time:1, manager_support_score:6.8},
+  {name:"Lena Andersson",   dept:"Marketing",   age:38, tenure_years:4,  absences_last_year:9,  absences_last_3months:5, department_stress_score:8.9, previous_long_term:0, part_time:0, manager_support_score:3.5},
+  {name:"Per Eriksson",     dept:"IT",          age:27, tenure_years:2,  absences_last_year:1,  absences_last_3months:0, department_stress_score:4.2, previous_long_term:0, part_time:0, manager_support_score:8.3},
+  {name:"Maria Gustafsson", dept:"Legal",       age:41, tenure_years:9,  absences_last_year:3,  absences_last_3months:1, department_stress_score:5.8, previous_long_term:0, part_time:0, manager_support_score:7.1},
+  {name:"Johan Pettersson", dept:"Engineering", age:55, tenure_years:20, absences_last_year:7,  absences_last_3months:4, department_stress_score:8.5, previous_long_term:1, part_time:0, manager_support_score:3.8},
+  {name:"Karin Olsson",     dept:"Product",     age:32, tenure_years:5,  absences_last_year:2,  absences_last_3months:0, department_stress_score:4.5, previous_long_term:0, part_time:1, manager_support_score:8.9},
+  {name:"Thomas Berg",      dept:"Sales",       age:48, tenure_years:8,  absences_last_year:10, absences_last_3months:5, department_stress_score:9.5, previous_long_term:1, part_time:0, manager_support_score:2.5},
+  {name:"Eva Larsson",      dept:"Finance",     age:36, tenure_years:11, absences_last_year:1,  absences_last_3months:0, department_stress_score:3.0, previous_long_term:0, part_time:0, manager_support_score:9.2},
+];
+
+let allData = [];
+let filter = 'ALL';
+let chart = null;
+
+// ── API ───────────────────────────────────────────────────────────────────
+async function loadAll() {
+  document.getElementById('tbody').innerHTML =
+    `<tr class="loading-row"><td colspan="8"><span class="spinner"></span>Fetching predictions from API...</td></tr>`;
+  try {
+    const body = EMPLOYEES.map(({name, dept, ...rest}) => rest);
+    const res = await fetch(`${API}/predict/batch`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const predictions = await res.json();
+    allData = EMPLOYEES.map((e, i) => ({...e, ...predictions[i]}));
+    document.getElementById('statusDot').classList.add('online');
+    document.getElementById('statusText').textContent = `API online · ${API}`;
+    document.getElementById('footerApi').textContent = `API: ${API}/predict/batch`;
+    document.getElementById('errorBanner').style.display = 'none';
+    render();
+  } catch(e) {
+    document.getElementById('statusDot').classList.remove('online');
+    document.getElementById('statusText').textContent = 'API offline';
+    document.getElementById('errorBanner').style.display = 'block';
+    document.getElementById('tbody').innerHTML =
+      `<tr class="loading-row"><td colspan="8">Could not reach API at ${API}</td></tr>`;
+  }
+}
+
+function setFilter(f) {
+  filter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.className = 'filter-btn';
+  });
+  if (f === 'ALL') { document.getElementById('btnAll').classList.add('active'); }
+  if (f === 'HIGH') { document.getElementById('btnHigh').classList.add('active-high'); }
+  if (f === 'LOW') { document.getElementById('btnLow').classList.add('active-low'); }
+  render();
+}
+
+function render() {
+  const data = filter === 'ALL' ? allData : allData.filter(e => e.risk_level === filter);
+  renderStats(allData);
+  renderChart(allData);
+  renderTable(data);
+}
+
+function renderStats(data) {
+  const high = data.filter(e => e.risk_level === 'HIGH').length;
+  const avg = Math.round(data.reduce((s,e) => s + e.probability, 0) / data.length * 100);
+  document.getElementById('sTotal').textContent = data.length;
+  document.getElementById('sHigh').textContent = high;
+  document.getElementById('sLow').textContent = data.length - high;
+  document.getElementById('sAvg').textContent = avg + '%';
+}
+
+function renderChart(data) {
+  const sorted = [...data].sort((a,b) => b.probability - a.probability);
+  const labels = sorted.map(e => e.name.split(' ')[0]);
+  const vals = sorted.map(e => Math.round(e.probability * 100));
+  const colors = sorted.map(e => e.risk_level === 'HIGH'
+    ? 'rgba(255,77,109,0.75)' : 'rgba(0,229,160,0.6)');
+  if (chart) chart.destroy();
+  chart = new Chart(document.getElementById('chart'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: vals,
+        backgroundColor: colors,
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.raw}% risk` }}},
+      scales: {
+        y: { min:0, max:100, ticks: { color:'rgba(240,244,255,0.3)', callback: v => v+'%', font:{family:'DM Mono',size:10} }, grid: { color:'rgba(255,255,255,0.04)' }, border:{color:'transparent'} },
+        x: { ticks: { color:'rgba(240,244,255,0.35)', font:{family:'DM Mono',size:10} }, grid: { display: false }, border:{color:'transparent'} }
+      }
+    }
+  });
+}
+
+function renderTable(data) {
+  if (!data.length) {
+    document.getElementById('tbody').innerHTML =
+      `<tr class="loading-row"><td colspan="8">No employees match this filter.</td></tr>`;
+    return;
+  }
+  document.getElementById('tbody').innerHTML = data.map((e, i) => {
+    const isH = e.risk_level === 'HIGH';
+    const pct = Math.round(e.probability * 100);
+    const initials = e.name.split(' ').map(n=>n[0]).join('');
+    return `<tr class="${isH ? 'high' : ''}" style="animation-delay:${i*40}ms">
+      <td>
+        <div class="name-wrap">
+          <div class="avatar ${isH?'h':'l'}">${initials}</div>
+          <div>
+            <div class="name">${e.name}</div>
+            <div class="dept">${e.dept}</div>
+          </div>
+        </div>
+      </td>
+      <td class="num">${e.age}</td>
+      <td class="num">${e.absences_last_year}</td>
+      <td class="num">${e.department_stress_score.toFixed(1)}</td>
+      <td class="num">${e.previous_long_term ? 'Yes' : '—'}</td>
+      <td>
+        <div class="prob-wrap">
+          <div class="prob-track"><div class="prob-fill ${isH?'h':'l'}" style="width:${pct}%"></div></div>
+          <span class="prob-num ${isH?'h':'l'}">${pct}%</span>
+        </div>
+      </td>
+      <td><span class="badge ${e.risk_level}">${e.risk_level}</span></td>
+      <td class="rec">${e.recommendation}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+// Allow overriding API URL via URL param: ?api=http://127.0.0.1:XXXXX
+const params = new URLSearchParams(window.location.search);
+if (params.get('api')) {
+  localStorage.setItem('hs_api', params.get('api'));
+  location.search = '';
+}
+
+loadAll();
+</script>
+</body>
+</html>
