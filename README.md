@@ -197,6 +197,7 @@ healthsignal-platform/
 
 ```bash
 # Docker Compose
+docker images
 docker compose down -v
 
 # kind cluster
