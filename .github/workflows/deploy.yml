@@ -1,4 +1,175 @@
 # =========================================================
+# Security Scanning Pipeline — HealthSignal
+#
+# This pipeline runs ONLY security tools:
+# 1. Gitleaks  — secret scanning
+# 2. Bandit    — Python SAST
+# 3. Trivy     — container vulnerability scan
+#
+# No ML training, no Docker push, no AWS, no EKS needed.
+# Perfect for testing security setup locally/early stage.
+# =========================================================
+
+name: Security Scan Only
+
+# ---------------------------------------------------------
+# Trigger conditions
+# ---------------------------------------------------------
+on:
+
+  # Run on every push to any branch
+  push:
+    branches: [main, dev]
+
+  # Run on pull requests
+  pull_request:
+    branches: [main]
+
+  # Allow manual trigger from GitHub Actions UI
+  # Go to Actions tab → Security Scan Only → Run workflow
+  workflow_dispatch:
+
+# =========================================================
+# JOBS
+# =========================================================
+jobs:
+
+  # =======================================================
+  # JOB 1: SECRET SCANNING
+  # Scans code and full git history for leaked secrets
+  # e.g. AWS keys, passwords, tokens, certificates
+  # =======================================================
+  secret-scan:
+
+    name: Secret Scanning (Gitleaks)
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Fetch full git history so Gitleaks checks all commits
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # =======================================================
+  # JOB 2: SAST — STATIC CODE ANALYSIS
+  # Scans your Python code for security issues
+  # No need to run the code — reads it like a spell checker
+  # =======================================================
+  sast-scan:
+
+    name: SAST Code Scan (Bandit)
+
+    runs-on: ubuntu-latest
+
+    # Runs independently — does not need secret-scan to pass
+    # So you see ALL results at once, not one at a time
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Bandit
+        run: pip install bandit
+
+      # Human readable output — visible directly in Actions logs
+      - name: Run Bandit (log output)
+        run: bandit -r ./app -ll
+        continue-on-error: true   # show results but don't block
+
+      # JSON report — downloadable from Actions UI
+      - name: Run Bandit (JSON report)
+        run: bandit -r ./app -ll -f json -o bandit-report.json
+        continue-on-error: true
+
+      - name: Upload Bandit Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-security-report
+          path: bandit-report.json
+
+  # =======================================================
+  # JOB 3: CONTAINER VULNERABILITY SCAN
+  # Builds Docker image locally on GitHub runner
+  # Scans it for CVEs — does NOT push to ECR
+  # No AWS credentials needed
+  # =======================================================
+  container-scan:
+
+    name: Container Scan (Trivy)
+
+    runs-on: ubuntu-latest
+
+    # Runs independently — parallel to sast-scan
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      # Build image locally just for scanning
+      # No push, no ECR, no AWS needed
+      - name: Build Docker image (local only)
+        run: docker build -t healthsignal:scan .
+
+      # Scan the locally built image
+      - name: Run Trivy Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: healthsignal:scan
+          format: table
+          exit-code: '0'            # show results but don't fail yet
+          severity: 'CRITICAL,HIGH,MEDIUM'
+          output: trivy-report.txt
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: trivy-container-report
+          path: trivy-report.txt
+
+  # =======================================================
+  # JOB 4: SECURITY SUMMARY
+  # Runs after all scans complete
+  # Prints a summary of all results in one place
+  # =======================================================
+  security-summary:
+
+    name: Security Summary
+
+    runs-on: ubuntu-latest
+
+    # Wait for all three scans to finish
+    needs: [secret-scan, sast-scan, container-scan]
+
+    # Run even if some scans failed
+    if: always()
+
+    steps:
+
+      - name: Print Summary
+        run: |
+          echo "================================================"
+          echo "         HEALTHSIGNAL SECURITY SCAN SUMMARY     "
+          echo "================================================"
+          echo ""
+          echo "Secret Scan  (Gitleaks) : ${{ needs.secret-scan.result }}"
+          echo "SAST Scan    (Bandit)   : ${{ needs.sast-scan.result }}"
+          echo "Container    (Trivy)    : ${{ needs.container-scan.result }}"
+          echo ""
+          echo "Download reports from the Artifacts section above"
+          echo "================================================"
+# =========================================================
 # GitHub Actions CI/CD Pipeline
 # Project: SickLeave Predictor
 #
