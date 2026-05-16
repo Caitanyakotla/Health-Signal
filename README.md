@@ -110,6 +110,63 @@ kubectl port-forward svc/monitoring-grafana 3000:80 -n monitoring
 
 ---
 
+## Kyverno Policy Enforcement
+
+[Kyverno](https://kyverno.io) is a Kubernetes-native policy engine. HealthSignal uses it to enforce security and operational standards across the `healthsignal` namespace.
+
+### Policies
+
+| Policy | File | Scope | What it enforces |
+|--------|------|-------|-----------------|
+| Disallow Privileged Containers | `k8s/kyverno/disallow-privileged.yaml` | Pods | No container may run with `privileged: true` |
+| Require Resource Limits | `k8s/kyverno/require-resource-limits.yaml` | Pods | Every container must define `cpu` and `memory` limits |
+| Require Deployment Labels | `k8s/kyverno/require-labels.yaml` | Deployments | Must have `app`, `team`, and `version` labels |
+
+All policies are set to `audit` mode — violations are logged but not blocked. Switch to `enforce` when ready to harden.
+
+### Install Kyverno
+
+```bash
+helm repo add kyverno https://kyverno.github.io/kyverno/
+helm repo update
+
+helm install kyverno kyverno/kyverno \
+  --namespace kyverno \
+  --create-namespace
+```
+
+### Apply policies
+
+```bash
+kubectl apply -f k8s/kyverno/
+```
+
+### Check for violations
+
+```bash
+# List all policy reports
+kubectl get policyreport -n healthsignal
+
+# See detailed violations
+kubectl describe policyreport -n healthsignal
+```
+
+### Switch a policy to enforce mode
+
+Edit the relevant file and change `validationFailureAction`:
+
+```yaml
+validationFailureAction: enforce   # was: audit
+```
+
+Then re-apply:
+
+```bash
+kubectl apply -f k8s/kyverno/disallow-privileged.yaml
+```
+
+---
+
 ## Manual API test (curl)
 
 ```bash
@@ -161,7 +218,11 @@ healthsignal-platform/
 │   ├── model.pkl               # Trained model (generated)
 │   └── features.pkl            # Feature list (generated)
 ├── k8s/
-│   └── manifests.yaml          # K8s Deployment, Service, HPA
+│   ├── manifests.yaml          # K8s Deployment, Service, HPA
+│   └── kyverno/
+│       ├── disallow-privileged.yaml      # Block privileged containers
+│       ├── require-resource-limits.yaml  # Enforce CPU/memory limits
+│       └── require-labels.yaml           # Enforce app/team/version labels
 ├── monitoring/
 │   ├── prometheus.yml          # Prometheus scrape config
 │   ├── grafana-datasource.yml  # Grafana Prometheus datasource
@@ -185,6 +246,7 @@ healthsignal-platform/
 |---|---|
 | AWS infrastructure | Terraform EKS + ECR in deploy.yml |
 | Kubernetes clusters | kind local + k8s/manifests.yaml with HPA |
+| Policy-as-code | Kyverno ClusterPolicies for security + operational standards |
 | ElasticSearch | ES container, prediction logging, /stats endpoint |
 | CI/CD pipelines | GitHub Actions: train → build → push → deploy |
 | Monitoring & observability | Prometheus + Grafana with custom metrics |
