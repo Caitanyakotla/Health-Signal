@@ -1,0 +1,74 @@
+# =========================================================
+# Kyverno Policy 3: Require Labels on Deployments
+#
+# What it does:
+# Every deployment in healthsignal namespace MUST have
+# these labels defined:
+#   - app        (what is this service?)
+#   - team       (who owns it?)
+#   - version    (what version is running?)
+#
+# Why it matters in MedTech:
+# In regulated environments, you must always know:
+# - Which team owns a running service
+# - What version is deployed (for audit trails)
+# - What application a pod belongs to
+#
+# Without labels, incident response is slow — you can't
+# quickly find which team to call when a service fails.
+# Regulators also expect traceability of deployed software.
+#
+# What it blocks:
+# metadata:
+#   name: healthsignal-predictor
+#   # no labels ← THIS IS BLOCKED
+#
+# What it allows:
+# metadata:
+#   name: healthsignal-predictor
+#   labels:
+#     app: healthsignal-predictor   ← REQUIRED
+#     team: platform                ← REQUIRED
+#     version: "1.0.0"             ← REQUIRED
+# =========================================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-deployment-labels
+  annotations:
+    policies.kyverno.io/title: Require Deployment Labels
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/description: >-
+      All deployments must have app, team, and version labels
+      for traceability and ownership in the healthsignal platform.
+spec:
+
+  validationFailureAction: audit
+
+  background: true
+
+  rules:
+
+    - name: require-deployment-labels
+      match:
+        any:
+          - resources:
+              kinds:
+                - Deployment
+              namespaces:
+                - healthsignal
+
+      validate:
+        message: >-
+          Deployments in healthsignal must have these labels:
+          'app', 'team', and 'version'.
+          Example: app=healthsignal-predictor, team=platform, version=1.0.0
+
+        pattern:
+          metadata:
+            labels:
+              app: "?*"      # must exist and be non-empty
+              team: "?*"     # must exist and be non-empty
+              version: "?*"  # must exist and be non-empty

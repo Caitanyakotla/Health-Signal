@@ -11,6 +11,10 @@ kind: Deployment
 metadata:
   name: elasticsearch
   namespace: healthsignal
+  labels:
+    app: elasticsearch
+    team: platform
+    version: "8.12.0"
 spec:
   replicas: 1
   selector:
@@ -20,6 +24,8 @@ spec:
     metadata:
       labels:
         app: elasticsearch
+        team: platform
+        version: "8.12.0"
     spec:
       containers:
       - name: elasticsearch
@@ -46,6 +52,7 @@ spec:
             port: 9200
           initialDelaySeconds: 30
           periodSeconds: 10
+
 ---
 apiVersion: v1
 kind: Service
@@ -67,7 +74,9 @@ metadata:
   name: healthsignal-predictor
   namespace: healthsignal
   labels:
-    app: predictor
+    app: healthsignal-predictor 
+    team: platform 
+    version: "1.0.0"
 spec:
   replicas: 2
   selector:
@@ -77,6 +86,8 @@ spec:
     metadata:
       labels:
         app: predictor
+        team: platform 
+        version: "1.0.0" 
       annotations:
         prometheus.io/scrape: "true"
         prometheus.io/port: "8000"
@@ -85,7 +96,7 @@ spec:
       containers:
       - name: predictor
         image: healthsignal-predictor:latest  # replace with your ECR URI for AWS
-        imagePullPolicy: Never             # use IfNotPresent for ECR
+        imagePullPolicy: Never 
         ports:
         - containerPort: 8000
         env:
@@ -97,7 +108,7 @@ spec:
             cpu: "250m"
           limits:
             memory: "512Mi"
-            cpu: "500m"
+            cpu: "500m" 
         livenessProbe:
           httpGet:
             path: /health
@@ -110,6 +121,7 @@ spec:
             port: 8000
           initialDelaySeconds: 10
           periodSeconds: 10
+
 ---
 apiVersion: v1
 kind: Service

@@ -1,0 +1,59 @@
+# =========================================================
+# Kyverno Policy 1: Disallow Privileged Containers
+#
+# What it does:
+# Blocks any pod from running as a privileged container
+# in the healthsignal namespace.
+#
+# Why it matters in MedTech:
+# Privileged containers have root-level access to the host
+# machine. If your FastAPI container is compromised,
+# an attacker could escape the container and access the
+# entire Kubernetes node — including patient health data.
+#
+# What it blocks:
+# securityContext:
+#   privileged: true    ← THIS IS BLOCKED
+# =========================================================
+
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-privileged-containers
+  annotations:
+    policies.kyverno.io/title: Disallow Privileged Containers
+    policies.kyverno.io/category: Security
+    policies.kyverno.io/severity: high
+    policies.kyverno.io/description: >-
+      Privileged containers have access to the host system.
+      This policy blocks privileged containers in the
+      healthsignal namespace to protect sensitive health data.
+spec:
+
+  # audit     = allow but log violations (good for learning)
+  # enforce   = block violating deployments completely
+  validationFailureAction: audit
+
+  background: true
+
+  rules:
+
+    - name: disallow-privileged-containers
+      match:
+        any:
+          - resources:
+              kinds:
+                - Pod
+              namespaces:
+                - healthsignal   # only applies to your namespace
+
+      validate:
+        message: >-
+          Privileged containers are not allowed in the healthsignal
+          namespace. Remove 'privileged: true' from securityContext.
+
+        pattern:
+          spec:
+            containers:
+              - =(securityContext):
+                  =(privileged): "false"

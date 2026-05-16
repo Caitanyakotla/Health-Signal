@@ -1,5 +1,5 @@
 """
-SickLeave Predictor API — Meditech-style inference service.
+SickLeave Predictor API
 Exposes REST endpoints for sick leave risk prediction,
 logs events to ElasticSearch, and exposes Prometheus metrics.
 """
