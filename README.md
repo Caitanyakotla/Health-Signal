@@ -1,5 +1,11 @@
 # HealthSignal Platform
 ### Nordic HealthTech ML Infrastructure
+A cloud-native ML inference platform for predicting employee sick leave  built as a personal project to demonstrate  production-grade DevOps and MLOps practices in a healthcare context.
+
+## About the Project
+
+This is a personal portfolio project. The concept itself is real — healthcare organisations use similar platforms today 
+to manage workforce sick leave. In production this kind of system can help hospital HR(Human Resources) teams anticipate staff shortages before they happen, helping protect patient care.
 
 Infrastructure:
 **AWS · Kubernetes · ElasticSearch · CI/CD · Prometheus · Grafana · Docker**
@@ -56,6 +62,25 @@ python3 load_test.py
 | Grafana | http://localhost:3000 | admin / admin123 |
 | Kibana | http://localhost:5601 | — |
 | ElasticSearch | http://localhost:9200 | — |
+
+---
+
+## Screenshots
+
+**HealthSignal Dashboard — Risk Overview**
+![Dashboard overview](Screenshots/Dashboard%201.jpg)
+
+**Employee Risk Table — High / Low classification**
+![Employee risk table](Screenshots/Dashboard%202.jpg)
+
+**Live API Prediction — HIGH risk employee (curl)**
+![API prediction response](Screenshots/Prediction%20data.jpg)
+
+**Grafana — Prediction rate by risk level (Prometheus)**
+![Grafana prediction metrics](Screenshots/Grafana%20dashboard%20Risk%20Predicition%202%20.jpg)
+
+**Kubernetes — Pods, Services, Deployment, HPA running**
+![Kubernetes resources](Screenshots/k8s%20Resources.jpg)
 
 ---
 
@@ -167,6 +192,45 @@ kubectl apply -f k8s/kyverno/disallow-privileged.yaml
 
 ---
 
+## SBOM — Software Bill of Materials
+
+An SBOM is an ingredients list for the container image for every package, library, and version included. In MedTech and regulated sectors, SBOMs are required by frameworks like the EU.
+
+Cyber Resilience Act: when a CVE is disclosed, security teams check the SBOM to instantly know which products are affected without re-scanning everything.
+
+HealthSignal generates SBOMs automatically in the CI pipeline using [Syft](https://github.com/anchore/syft)
+
+### Formats generated
+
+| Format | File | Used for |
+|--------|------|----------|
+| SPDX JSON | `healthsignal-sbom.spdx.json` | Industry standard, EU CRA compliance |
+| CycloneDX JSON | `healthsignal-sbom.cyclonedx.json` | Preferred in healthcare / regulated sectors |
+
+### Generate locally
+
+# Install Syft
+curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+
+# Build image
+docker build -t healthsignal:sbom .
+
+# Generate SPDX
+syft healthsignal:sbom -o spdx-json > healthsignal-sbom.spdx.json
+
+# Generate CycloneDX
+syft healthsignal:sbom -o cyclonedx-json > healthsignal-sbom.cyclonedx.json
+
+# Summary
+syft healthsignal:sbom -o table
+```
+
+### In CI (GitHub Actions)
+
+The `sbom-generate` job runs on every push to `main`/`dev`. Both SBOM files are uploaded as workflow artifacts and downloadable from the GitHub Actions UI under **healthsignal-sbom**.
+
+---
+
 ## Manual API test (curl)
 
 ```bash
@@ -247,6 +311,7 @@ healthsignal-platform/
 | AWS infrastructure | Terraform EKS + ECR in deploy.yml |
 | Kubernetes clusters | kind local + k8s/manifests.yaml with HPA |
 | Policy-as-code | Kyverno ClusterPolicies for security + operational standards |
+| Supply chain security | Syft SBOM generation (SPDX + CycloneDX) in CI, Trivy CVE scanning |
 | ElasticSearch | ES container, prediction logging, /stats endpoint |
 | CI/CD pipelines | GitHub Actions: train → build → push → deploy |
 | Monitoring & observability | Prometheus + Grafana with custom metrics |
