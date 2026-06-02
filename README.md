@@ -5,7 +5,7 @@ A cloud-native ML inference platform for predicting employee sick leave  built a
 ## About the Project
 
 This is a personal portfolio project. The concept itself is real healthcare organisations use similar platforms today 
-to manage workforce sick leave. In production this kind of system can help hospital HR(Human Resources) teams anticipate staff shortages before they happen, helping protect patient care.
+to manage workforce sick leave. In production this kind of system can help hospital HR(health  record) teams anticipate staff shortages before they happen, helping protect patient care.
 
 Infrastructure:
 **AWS · Kubernetes · ElasticSearch · CI/CD · Prometheus · Grafana · Docker**
