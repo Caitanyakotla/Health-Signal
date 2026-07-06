@@ -1,4 +1,5 @@
 # HealthSignal Platform
+
 ### Nordic HealthTech ML Infrastructure
 A cloud-native ML inference platform for predicting employee sick leave  built as a personal project to demonstrate  production-grade DevOps and MLOps practices in a healthcare context.
 
@@ -231,6 +232,22 @@ The `sbom-generate` job runs on every push to `main`/`dev`. Both SBOM files are 
 
 ---
 
+## CI/CD Guardian — AI Pipeline Agent
+
+An autonomous agent (built with the AI Agent SDK) that replaces the human "pipeline babysitter" role. It polls GitHub Actions; when a run fails it fetches the logs, diagnoses the root cause, prints suggested fix steps, applies the fix locally — and only pushes to GitHub after explicit human approval at the terminal. AI is used sparingly: polling and log fetching are plain Python (free), a cheap model triages transient failures (~$0.01), and the main model runs only when a real code fix is needed. The approval gate is enforced in code (a tool-permission callback), so the agent physically cannot push without a `y`.
+
+```bash
+pip install -r ci-agent/requirements.txt
+
+python3 ci-agent/agent.py            # watch mode (poll every 60s)
+python3 ci-agent/agent.py --once     # single check (cron-friendly)
+python3 ci-agent/agent.py --dry-run  # diagnose + suggest only, never push
+```
+
+See [`ci-agent/README.md`](ci-agent/README.md) for the safety model and full usage.
+
+---
+
 ## Manual API test (curl)
 
 ```bash
@@ -292,6 +309,10 @@ healthsignal-platform/
 │   ├── grafana-datasource.yml  # Grafana Prometheus datasource
 │   ├── grafana-dashboard.json  # Pre-built dashboard
 │   └── grafana-dashboard-config.yml
+├── ci-agent/
+│   ├── agent.py                # AI CI/CD guardian ( Agent SDK)
+│   ├── requirements.txt
+│   └── README.md               # Safety model + usage
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml          # GitHub Actions CI/CD (AWS EKS)
