@@ -5,27 +5,39 @@ that replaces the "human watching the pipeline" role for this repo:
 
 
 ```
-poll gh run list (python)
-        │ failure detected
-        ▼
-fetch failure logs via gh (python)
-        │
-        ▼
-TRIAGE — small model (~$0.01)
-        │
-        ├── transient (flaky runner/network) ─► "just rerun it", done
-        │
-        ▼ real code/config problem
-
-FIX AGENT — main model
-  1. prints ROOT CAUSE
-  2. prints SUGGESTED FIX steps
-  3. edits the repo files to apply the fix
-  4. git commit
-  5. git push  ──► ⛔ HUMAN APPROVAL [y/N]
-        │ approved
-        ▼
-Push re-triggers the pipeline → green ✅
+┌──────────────────────────────────────┐
+│  poll gh run list (python)           │
+└──────────────────────────────────────┘
+                   │  failure detected
+                   ▼
+┌──────────────────────────────────────┐
+│  fetch failure logs via gh (python)  │
+└──────────────────────────────────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────┐
+│  TRIAGE — small model                │
+└──────────────────────────────────────┘
+                   │
+                   ├── transient (flaky runner / network) ──►  "just rerun it" — done
+                   │
+                   ▼  real code / config problem
+┌──────────────────────────────────────┐
+│  FIX AGENT — main model              │
+│                                      │
+│   1. prints ROOT CAUSE               │
+│   2. prints SUGGESTED FIX steps      │
+│   3. edits repo files to apply fix   │
+│   4. git commit                      │
+└──────────────────────────────────────┘
+                   │  git push
+                   ▼
+┌──────────────────────────────────────┐
+│  HUMAN APPROVAL             [y / N]  │  ⛔ enforced in code
+└──────────────────────────────────────┘
+                   │  approved
+                   ▼
+     push re-triggers the pipeline → green ✅
 ```
 
 Successful runs are short-circuited in Python and never touch a model at all.

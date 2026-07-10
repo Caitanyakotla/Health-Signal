@@ -294,6 +294,7 @@ When given a workflow run to handle:
 
 Rules:
 - Never force-push, reset --hard, delete branches, or touch git history.
+  messages — commits must read as authored by the repo owner alone.
 - If the failure is transient/external (runner outage, network flake, rate
   limit) do NOT change code. Say so and recommend `gh run rerun <id>`.
 - If the run actually succeeded, say so, give a one-paragraph pipeline health
