@@ -25,14 +25,14 @@ Usage:
 To keep AI usage (and cost/quota) minimal, the model is only involved where
 it matters:
 
-    polling / log fetching      plain Python + gh   free
-    failure triage              cheap model (Haiku) ~a cent
+    polling / log fetching
+    failure triage
     diagnosis + fix + push      main model          only for real code fixes
 
 Config (env vars):
     CI_AGENT_REPO           owner/repo  (default: auto-detected via gh)
-    CI_AGENT_MODEL          fix model override   (default: sonnet)
-    CI_AGENT_TRIAGE_MODEL   triage model override (default: haiku)
+    CI_AGENT_MODEL          fix model override
+    CI_AGENT_TRIAGE_MODEL   triage model override
 """
 
 import argparse
@@ -58,6 +58,9 @@ from claude_agent_sdk import (
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 STATE_FILE = Path(__file__).resolve().parent / ".state.json"
+# Local plugin carrying the agent's SKILL.md skills (see plugin/skills/).
+PLUGIN_DIR = Path(__file__).resolve().parent / "plugin"
+GUARDIAN_SKILL = "ci-guardian:diagnosing-ci-failures"
 
 # Model aliases, resolved by the CLI. Override with full model ids via env
 # (e.g. CI_AGENT_MODEL) if you need to pin an exact version.
@@ -267,38 +270,14 @@ def guardian_system_prompt(repo: str) -> str:
     return f"""You are the HealthSignal CI/CD Guardian, an autonomous pipeline
 engineer for the GitHub repo {repo}. Your working directory is the repo checkout.
 
-When given a workflow run to handle:
+For every run you are given, start by invoking the {GUARDIAN_SKILL} skill and
+follow its workflow: investigate, report ROOT CAUSE and SUGGESTED FIX,
+implement the fix, then commit and push.
 
-1. INVESTIGATE. The run summary and failed-step logs are already included in
-   the task message — start from those. Only fetch more if they are not
-   enough (gh run view <id> --repo {repo} --log-failed). Read any workflow
-   or source files needed to understand the failure.
-
-2. REPORT before changing anything, in exactly this format:
-     ## ROOT CAUSE
-     (2-4 sentences, plain language)
-     ## SUGGESTED FIX
-     (numbered steps a human could follow)
-
-3. FIX. Implement the fix by editing files in the repo.
-
-4. COMMIT & PUSH. Stage ONLY the files you changed (`git add <file>` — never
-   `git add -A` or `git add .`; the checkout may contain unrelated
-   work-in-progress that is not yours to commit). Commit with message:
-     ci-fix: <one-line summary>
-   Then push to the SAME branch the failed run was on:
-     git push origin <branch>
-   The push triggers a human approval prompt automatically — you don't need
-   to ask first, just run it. If the human denies it, do not retry; summarize
-   the local changes so they can review, and stop.
-
-Rules:
+Hard rules (these override everything else):
 - Never force-push, reset --hard, delete branches, or touch git history.
-  messages — commits must read as authored by the repo owner alone.
-- If the failure is transient/external (runner outage, network flake, rate
-  limit) do NOT change code. Say so and recommend `gh run rerun <id>`.
-- If the run actually succeeded, say so, give a one-paragraph pipeline health
-  summary, and stop.
+  no "Generated with" lines. Commits must read as authored by the repo owner
+  alone.
 - Stay within this repository. Do not modify anything outside it."""
 
 
@@ -365,11 +344,17 @@ async def handle_run(run: dict, repo: str, dry_run: bool) -> None:
         cwd=str(REPO_ROOT),
         model=FIX_MODEL,
         system_prompt=guardian_system_prompt(repo),
-        allowed_tools=["Read", "Grep", "Glob"],
+        allowed_tools=["Read", "Grep", "Glob", "Skill"],
         permission_mode="acceptEdits",
         can_use_tool=make_permission_handler(dry_run),
-        # Don't load filesystem permission settings (.claude/settings.json) —
-        # an allow-rule for git push would silently bypass the gate above.
+        # Workflow knowledge lives in SKILL.md files loaded via a local
+        # plugin, NOT via .claude/skills + setting_sources: loading
+        # filesystem settings would also load .claude/settings.json, where
+        # an allow-rule for git push could silently bypass the gate above.
+        # The plugin path keeps setting_sources=[] (gate intact) while still
+        # providing the skills.
+        plugins=[{"type": "local", "path": str(PLUGIN_DIR)}],
+        skills=[GUARDIAN_SKILL],
         setting_sources=[],
         max_turns=30,
     )

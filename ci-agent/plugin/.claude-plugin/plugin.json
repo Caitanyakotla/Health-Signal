@@ -1,0 +1,5 @@
+{
+  "name": "ci-guardian",
+  "description": "Skills for the HealthSignal CI/CD Guardian agent: diagnosing and fixing failed GitHub Actions runs.",
+  "version": "1.0.0"
+}

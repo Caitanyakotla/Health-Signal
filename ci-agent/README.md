@@ -60,6 +60,43 @@ The agent is also instructed to stage only the files it changed (never
 commit. Filesystem permission settings (`.claude/settings.json`) are
 deliberately not loaded, so no allow-rule can bypass the gate.
 
+## Agent knowledge as Skills (SKILL.md)
+
+The fix agent's procedural knowledge follows the
+[Agent Skills](https://code.claude.com/docs/en/agent-sdk/skills) standard:
+it lives in `SKILL.md` files, not in Python string prompts.
+
+```
+ci-agent/
+├── agent.py                     # orchestration, safety gate, polling
+└── plugin/                      # local Claude Code plugin
+    ├── .claude-plugin/
+    │   └── plugin.json          # plugin manifest ("ci-guardian")
+    └── skills/
+        └── diagnosing-ci-failures/
+            ├── SKILL.md         # the fix workflow (loaded when triggered)
+            └── references/
+                └── pipeline.md  # this repo's CI jobs + usual failure classes
+```
+
+Split of responsibilities:
+
+| Layer | Contains |
+|---|---|
+| `system_prompt` (Python) | Identity + hard safety rules only (no history rewriting, no AI attribution, stay in repo) |
+| `SKILL.md` | The diagnose → report → fix → commit/push workflow |
+| `references/pipeline.md` | Repo-specific pipeline knowledge, loaded only when the agent needs it (progressive disclosure) |
+| `can_use_tool` callback (Python) | Enforcement — the only layer that can actually block a push |
+
+The skills are loaded via the SDK's `plugins` option
+(`plugins=[{"type": "local", "path": "ci-agent/plugin"}]`) rather than from
+`.claude/skills/` — skill discovery from `.claude/skills/` requires
+`setting_sources=["project"]`, which would also load
+`.claude/settings.json`, where a `git push` allow-rule could silently bypass
+the approval gate. The plugin path keeps `setting_sources=[]` and the gate
+intact. The single-turn triage classifier stays as a plain prompt on
+purpose: it uses no tools, so a model-invoked skill would only add cost.
+
 ## Prerequisites
 
 - Python 3.10+

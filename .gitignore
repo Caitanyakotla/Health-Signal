@@ -1,0 +1,6 @@
+# Python
+__pycache__/
+*.pyc
+
+# CI/CD Guardian runtime state (machine-local, changes every poll)
+ci-agent/.state.json
